@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"regexp"
 
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
@@ -64,21 +63,20 @@ func (kc *KubernetesCleaner) CleanByRegexps(ctx context.Context, regexps []strin
 		compiledRegexps[i] = compiled
 	}
 
-	// Get the current node
-	var node *v1.Node
 	err := retry.OnError(retry.DefaultRetry, func(err error) bool {
 		return true
 	}, func() error {
-		n, err := kc.clientset.CoreV1().Nodes().Get(ctx, kc.nodeName, metav1.GetOptions{})
-		node = n
-		return err
-	})
-	if err != nil {
-		return fmt.Errorf("failed to get node %s: %w", kc.nodeName, err)
-	}
+		node, err := kc.clientset.CoreV1().Nodes().Get(ctx, kc.nodeName, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get node %s: %w", kc.nodeName, err)
+		}
 
-	// Remove labels that DO match any of the regex patterns
-	if node.Labels != nil {
+		if node.Labels == nil {
+			// Nothing to do
+			return nil
+		}
+
+		// Remove labels that DO match any of the regex patterns
 		var labelsToRemove []string
 		for key := range node.Labels {
 			for _, regex := range compiledRegexps {
@@ -95,20 +93,19 @@ func (kc *KubernetesCleaner) CleanByRegexps(ctx context.Context, regexps []strin
 		}
 
 		// Only update if there were labels to remove
-		if len(labelsToRemove) > 0 {
-			err = retry.OnError(retry.DefaultRetry, func(err error) bool {
-				return true
-			}, func() error {
-				_, err := kc.clientset.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
-				return err
-			})
-			if err != nil {
-				return fmt.Errorf("failed to update node %s after removing labels matching regexps: %w", kc.nodeName, err)
-			}
+		if len(labelsToRemove) == 0 {
+			return nil
 		}
-	}
 
-	return nil
+		_, err = kc.clientset.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to update node %s: %w", kc.nodeName, err)
+		}
+
+		return nil
+	})
+
+	return err
 }
 
 // GetName returns the name of the cleaner for logging purposes

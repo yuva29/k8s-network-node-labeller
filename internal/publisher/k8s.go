@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -55,41 +54,34 @@ func (kp *KubernetesPublisher) Publish(ctx context.Context, labels []label.Label
 		return nil
 	}
 
-	// Get the current node
-	var node *v1.Node
 	err := retry.OnError(retry.DefaultRetry, func(err error) bool {
 		return true
 	}, func() error {
-		n, err := kp.clientset.CoreV1().Nodes().Get(ctx, kp.nodeName, metav1.GetOptions{})
-		node = n
-		return err
+		// Get the node
+		node, err := kp.clientset.CoreV1().Nodes().Get(ctx, kp.nodeName, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get node %s: %w", kp.nodeName, err)
+		}
+
+		// Update node labels
+		if node.Labels == nil {
+			node.Labels = make(map[string]string)
+		}
+
+		// Add/update labels
+		for _, l := range labels {
+			node.Labels[l.Key] = l.Value
+		}
+
+		_, err = kp.clientset.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to update node %s: %w", kp.nodeName, err)
+		}
+
+		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("failed to get node %s: %w", kp.nodeName, err)
-	}
 
-	// Update node labels
-	if node.Labels == nil {
-		node.Labels = make(map[string]string)
-	}
-
-	// Add/update labels
-	for _, l := range labels {
-		node.Labels[l.Key] = l.Value
-	}
-
-	// Update the node
-	err = retry.OnError(retry.DefaultRetry, func(err error) bool {
-		return true
-	}, func() error {
-		_, err := kp.clientset.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
-		return err
-	})
-	if err != nil {
-		return fmt.Errorf("failed to update node %s with labels: %w", kp.nodeName, err)
-	}
-
-	return nil
+	return err
 }
 
 // GetName returns the name of the publisher for logging purposes
