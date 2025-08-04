@@ -130,6 +130,14 @@ func (nl *NodeLabeller) runOnce(ctx context.Context) error {
 
 // Stop gracefully stops the NodeLabeller
 func (nl *NodeLabeller) Stop() {
+	log.Printf("Cleaning up managed labels when stopping NodeLabeller")
+	regexps := label.DefaultNICPrefixedLabelRegexps
+	for _, cleaner := range *nl.cleaners {
+		if err := cleaner.CleanByRegexps(context.TODO(), regexps); err != nil {
+			log.Printf("failed to clean labels by regexps: %v", err)
+		}
+	}
+	log.Printf("Successfully cleaned up managed labels")
 	log.Println("NodeLabeller stopped")
 }
 
