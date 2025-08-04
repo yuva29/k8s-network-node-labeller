@@ -54,6 +54,8 @@ spec:
           mountPath: /usr/sbin/nicctl
         - name: lib-modules
           mountPath: /lib/modules
+        - name: opt-amd
+          mountPath: /opt/amd
         env:
         - name: DS_NODE_NAME
           valueFrom:
@@ -75,4 +77,8 @@ spec:
       - name: lib-modules
         hostPath:
           path: /lib/modules
+          type: Directory
+      - name: opt-amd
+        hostPath:
+          path: /opt/amd
           type: Directory
