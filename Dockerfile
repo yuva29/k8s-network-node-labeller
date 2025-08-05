@@ -19,14 +19,15 @@ ADD . /go/src/github.com/ROCm/k8s-network-node-labeller
 WORKDIR /go/src/github.com/ROCm/k8s-network-node-labeller
 RUN make build
 
-FROM ubuntu:22.04
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5
 LABEL \
     org.opencontainers.image.source="https://github.com/ROCm/k8s-network-node-labeller" \
     org.opencontainers.image.authors="Shiv Tyagi <Shiv.Tyagi@amd.com>" \
     org.opencontainers.image.vendor="Advanced Micro Devices, Inc." \
     org.opencontainers.image.licenses="Apache-2.0"
 
-RUN apt-get update && apt-get install -y pciutils jq kmod
+RUN microdnf update -y && microdnf install -y pciutils jq kmod && \
+    microdnf clean all
 WORKDIR /root/
 COPY --from=builder /go/src/github.com/ROCm/k8s-network-node-labeller/build/network-node-labeller .
 CMD ["./network-node-labeller"]
