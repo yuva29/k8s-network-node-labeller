@@ -49,7 +49,7 @@ func createNodeLabeller() (*nodelabeller.NodeLabeller, error) {
 	}
 
 	// Create nicctl client
-	nicctlClient, err := nicctl.NewNicctlCommandClient(discoverer.NicctlBinaryPath)
+	nicctlClient, err := createNicctlClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create nicctl client: %w", err)
 	}
@@ -105,6 +105,25 @@ func createKubernetesClient() (kubernetes.Interface, error) {
 	}
 
 	return clientset, nil
+}
+
+// createNicctlClient creates a nicctl client based on the environment
+func createNicctlClient() (nicctl.NicctlClient, error) {
+	// If SIM_ENABLE environment variable is set, create a mock client
+	if _, present := os.LookupEnv("SIM_ENABLE"); present {
+		log.Println("SIM_ENABLE is set, using MockNicctlClient")
+		mockClient := nicctl.NewMockNicctlClient()
+		mockClient.GetIonicDriverVersionFunc = func() (string, error) {
+			return "", nil
+		}
+		return mockClient, nil
+	}
+
+	nicctlClient, err := nicctl.NewNicctlCommandClient(discoverer.NicctlBinaryPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create nicctl client: %w", err)
+	}
+	return nicctlClient, nil
 }
 
 func main() {
