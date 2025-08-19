@@ -1,0 +1,16 @@
+---
+version: 2.0
+targets:
+  copy-network-node-labeller-artifacts:
+    commands: ["sh", "-c", "cd /k8s-network-node-labeller && /labeller-asset-push.sh"]
+    owners: ["email:Shiv.Tyagi@amd.com"]
+    area:
+    sub-area:
+    feature:
+    build-dependencies:
+      - build-network-node-labeller
+      - build-network-node-labeller-docker
+
+image:
+  bind_dir: /go/src/github.com/ROCm/k8s-network-node-labeller
+  work_dir: /go/src/github.com/ROCm/k8s-network-node-labeller

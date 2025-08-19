@@ -1,0 +1,31 @@
+---
+version: 2.0
+builds:
+  build-network-node-labeller:
+    commands: ["sh", "-c", "cd /usr/src/github.com/pensando/k8s-network-node-labeller && make build"]
+    owners: ["email:Shiv.Tyagi@amd.com"]
+    artifacts:
+        - /k8s-network-node-labeller/build/network-node-labeller
+
+  build-network-node-labeller-docker:
+    commands: ["sh", "-c", "cd /usr/src/github.com/pensando/k8s-network-node-labeller && \
+                HOURLY_TAG_LABEL=$RELEASE IMAGE_TAG=latest make docker-build docker-save"]
+    owners: ["email:Shiv.Tyagi@amd.com"]
+    artifacts:
+        - /k8s-network-node-labeller/build/docker/docker/k8s-network-node-labeller-latest.tar.gz
+
+targets:
+  unit-tests:
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/pensando/k8s-network-node-labeller && make test"]
+    owners: ["email:Shiv.Tyagi@amd.com"]
+    area:
+    sub-area:
+    feature:
+
+image:
+  bind_dir: "/k8s-network-node-labeller"
+  work_dir: "/k8s-network-node-labeller"
+
+jobs:
+  asset-build:
+    labels: ["CI-Sanity-Build"]
