@@ -5,11 +5,6 @@ group = getenv("GROUP_NAME")
 uid = getenv("USER_UID")
 gid = getenv("USER_GID")
 
-# remove old version of go
-run "rm -rf /usr/local/go"
-
-# download go1.24
-run "wget https://go.dev/dl/go1.24.0.linux-amd64.tar.gz && tar -C /usr/local/ -xzf go1.24.0.linux-amd64.tar.gz && rm go1.24.0.linux-amd64.tar.gz"
 # download and install kubectl 
 run "curl -LO https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl"
 run "chmod +x kubectl"
