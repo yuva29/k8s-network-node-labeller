@@ -12,7 +12,7 @@ builds:
                 HOURLY_TAG_LABEL=$RELEASE IMAGE_TAG=latest make docker-build docker-save"]
     owners: ["email:Shiv.Tyagi@amd.com"]
     artifacts:
-        - /k8s-network-node-labeller/build/docker/docker/k8s-network-node-labeller-latest.tar.gz
+        - /k8s-network-node-labeller/build/docker/k8s-network-node-labeller-latest.tar.gz
 
 targets:
   unit-tests:
