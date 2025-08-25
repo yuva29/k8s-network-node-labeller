@@ -5,11 +5,6 @@ group = getenv("GROUP_NAME")
 uid = getenv("USER_UID")
 gid = getenv("USER_GID")
 
-# download and install kubectl 
-run "curl -LO https://dl.k8s.io/release/v1.30.0/bin/linux/amd64/kubectl"
-run "chmod +x kubectl"
-run "sudo mv kubectl /usr/local/bin"
-
 run "curl -o /usr/bin/asset-pull http://pm.test.pensando.io/tools/asset-pull"
 run "chmod +x /usr/bin/asset-pull"
 run "curl -o /usr/bin/asset-push http://pm.test.pensando.io/tools/asset-push"
