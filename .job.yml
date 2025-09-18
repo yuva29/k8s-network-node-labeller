@@ -14,6 +14,13 @@ builds:
     artifacts:
         - /k8s-network-node-labeller/build/docker/k8s-network-node-labeller-latest.tar.gz
 
+  copyright-checks:
+    commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/pensando/gpu-operator && make copyrights"]
+    owners: ["email:sajmera@amd.com"]
+    area:
+    sub-area:
+    feature:
+
 targets:
   unit-tests:
     commands: [ "/bin/sh", "-c", "cd /usr/src/github.com/ROCm/k8s-network-node-labeller && make test"]

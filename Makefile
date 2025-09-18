@@ -58,3 +58,6 @@ test:
 	$(info Running tests...)
 	go test ./... -v
 	$(info Done!)
+
+copyrights:
+	GOFLAGS=-mod=mod go run tools/build/copyright/main.go && ${MAKE} fmt && ./tools/build/check-local-files.sh
