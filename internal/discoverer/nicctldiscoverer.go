@@ -18,9 +18,7 @@ package discoverer
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/ROCm/k8s-network-node-labeller/internal/label"
 	"github.com/ROCm/k8s-network-node-labeller/internal/nicctl"
@@ -51,21 +49,11 @@ func (d *NicctlDiscoverer) Discover() ([]label.Label, error) {
 		return nil, fmt.Errorf("failed to get cards: %w", err)
 	}
 
-	// Get fresh driver version
-	driverVersion, err := d.client.GetIonicDriverVersion()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get driver version: %w", err)
-	}
-
 	var labels []label.Label
 
 	// Add card count labels
 	cardCountLabels := d.generateCardCountLabelsAll(cards)
 	labels = append(labels, cardCountLabels...)
-
-	// Add card name labels
-	cardNameLabels := d.generateCardNameLabelsAll(cards)
-	labels = append(labels, cardNameLabels...)
 
 	// Add firmware version labels
 	firmwareVersionLabels := d.generateFirmwareVersionLabelsAll(cards)
@@ -78,10 +66,6 @@ func (d *NicctlDiscoverer) Discover() ([]label.Label, error) {
 	// Add port speed labels
 	portSpeedLabels := d.generatePortSpeedLabelsAll(cards)
 	labels = append(labels, portSpeedLabels...)
-
-	// Add Ionic driver version label
-	driverInfoLabels := d.generateDriverInfoLabels(driverVersion)
-	labels = append(labels, driverInfoLabels...)
 
 	return labels, nil
 }
@@ -117,36 +101,6 @@ func (d *NicctlDiscoverer) generateCardCountLabelsAll(cards []nicctl.NIC) []labe
 			strconv.Itoa(count),
 		)
 		labels = append(labels, skuCountLabel)
-	}
-
-	return labels
-}
-
-// generateCardNameLabelsAll generates labels for card product names.
-func (d *NicctlDiscoverer) generateCardNameLabelsAll(cards []nicctl.NIC) []label.Label {
-	var labels []label.Label
-
-	// Group product names by SKU
-	skuToProductName := make(map[string]string)
-	for _, nic := range cards {
-		sku := label.NormalizeString(nic.SKU)
-		productName := strings.TrimSpace(nic.ProductName)
-		re := regexp.MustCompile(`[^A-Za-z0-9-.]`)
-		productName = re.ReplaceAllString(productName, "_")
-		skuToProductName[sku] = productName
-	}
-
-	// Add labels for each SKU
-	for sku, productName := range skuToProductName {
-		var key string
-		if len(skuToProductName) == 1 {
-			key = label.DefaultNICPrefixedKey("product-name")
-		} else {
-			key = label.DefaultNICPrefixedKey(sku + ".product-name")
-		}
-
-		nameLabel := label.NewLabel(key, productName)
-		labels = append(labels, nameLabel)
 	}
 
 	return labels
@@ -251,23 +205,6 @@ func (d *NicctlDiscoverer) generatePortSpeedLabelsAll(cards []nicctl.NIC) []labe
 		}
 	}
 
-	return labels
-}
-
-// generateDriverInfoLabels generates labels for driver information.
-func (d *NicctlDiscoverer) generateDriverInfoLabels(driverVersion string) []label.Label {
-	var labels []label.Label
-
-	driverVersionLabel := label.NewLabel(
-		label.DefaultNICPrefixedKey("driver-version"),
-		driverVersion,
-	)
-	driverNameLabel := label.NewLabel(
-		label.DefaultNICPrefixedKey("driver-name"),
-		"ionic",
-	)
-
-	labels = append(labels, driverVersionLabel, driverNameLabel)
 	return labels
 }
 

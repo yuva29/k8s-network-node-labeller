@@ -29,6 +29,8 @@ import (
 	"github.com/ROCm/k8s-network-node-labeller/internal/discoverer"
 	"github.com/ROCm/k8s-network-node-labeller/internal/nicctl"
 	"github.com/ROCm/k8s-network-node-labeller/internal/publisher"
+	"github.com/ROCm/k8s-network-node-labeller/internal/sysfs"
+	"github.com/ROCm/k8s-network-node-labeller/internal/testutils"
 )
 
 func TestNodeLabeller_IntegrationWithNicSingleYAML(t *testing.T) {
@@ -64,8 +66,31 @@ func TestNodeLabeller_IntegrationWithNicSingleYAML(t *testing.T) {
 		t.Fatalf("Failed to create mock nicctl client from YAML: %v", err)
 	}
 
-	// Create discoverer with the mock client
+	// Create product info map with the specified product info
+	testProductInfoMap := map[string]sysfs.ProductInfo{
+		"8201": {
+			ProductName: "Test NIC 1",
+			SKU:         "DSS-W600",
+		},
+	}
+
+	// Create temporary directory and set up mock sysfs using nic_single_pci_funcs.yaml
+	tempDir := t.TempDir()
+	sysfsYamlFile := filepath.Join("testdata", "nic_single_pci_funcs.yaml")
+	err = testutils.CreateFakeSysfsFromFile(tempDir, sysfsYamlFile)
+	if err != nil {
+		t.Fatalf("Failed to create fake sysfs: %v", err)
+	}
+
+	// Create sysfs client with custom product info
+	sysfsClient, err := sysfs.NewSysfsClientWithProductInfoMap(tempDir, testProductInfoMap)
+	if err != nil {
+		t.Fatalf("Failed to create sysfs client: %v", err)
+	}
+
+	// Create discoverers with both mock nicctl and sysfs clients
 	nicctlDiscoverer := discoverer.NewNicctlDiscoverer(mockNicctlClient)
+	sysfsDiscoverer := discoverer.NewSysfsDiscoverer(sysfsClient)
 
 	// Create cleaner with the fake clientset
 	kubeCleaner, err := cleaner.NewKubernetesCleaner(fakeClientset, testNodeName)
@@ -81,7 +106,7 @@ func TestNodeLabeller_IntegrationWithNicSingleYAML(t *testing.T) {
 
 	// Create NodeLabeller with injected dependencies for testing
 	cleaners := []cleaner.Cleaner{kubeCleaner}
-	discoverers := []discoverer.Discoverer{nicctlDiscoverer}
+	discoverers := []discoverer.Discoverer{nicctlDiscoverer, sysfsDiscoverer}
 	publishers := []publisher.Publisher{kubePublisher}
 
 	nodeLabeller := NewNodeLabeller(

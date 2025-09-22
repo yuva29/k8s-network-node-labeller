@@ -47,9 +47,7 @@ func TestNicctlDiscoverer_Discover_FromYAML(t *testing.T) {
 			name:        "No NICs",
 			nicMockFile: "nic_empty.yaml",
 			expected: map[string]string{
-				"amd.com/nic.count":          "0",
-				"amd.com/nic.driver-version": "2.1.0",
-				"amd.com/nic.driver-name":    "ionic",
+				"amd.com/nic.count": "0",
 			},
 		},
 		{
@@ -57,12 +55,9 @@ func TestNicctlDiscoverer_Discover_FromYAML(t *testing.T) {
 			nicMockFile: "nic_single.yaml",
 			expected: map[string]string{
 				"amd.com/nic.count":            "1",
-				"amd.com/nic.product-name":     "Test_NIC_1",
 				"amd.com/nic.firmware-version": "1.2.3",
 				"amd.com/nic.port-count":       "1",
 				"amd.com/nic.port-speed":       "100G",
-				"amd.com/nic.driver-version":   "2.1.0",
-				"amd.com/nic.driver-name":      "ionic",
 			},
 		},
 		{
@@ -70,12 +65,9 @@ func TestNicctlDiscoverer_Discover_FromYAML(t *testing.T) {
 			nicMockFile: "nic_single_multi_port_same_speed.yaml",
 			expected: map[string]string{
 				"amd.com/nic.count":            "1",
-				"amd.com/nic.product-name":     "Test_NIC_1",
 				"amd.com/nic.firmware-version": "1.2.3",
 				"amd.com/nic.port-count":       "2",
 				"amd.com/nic.port-speed":       "100G",
-				"amd.com/nic.driver-version":   "2.1.0",
-				"amd.com/nic.driver-name":      "ionic",
 			},
 		},
 		{
@@ -83,13 +75,10 @@ func TestNicctlDiscoverer_Discover_FromYAML(t *testing.T) {
 			nicMockFile: "nic_single_multi_port_different_speeds.yaml",
 			expected: map[string]string{
 				"amd.com/nic.count":            "1",
-				"amd.com/nic.product-name":     "Test_NIC_1",
 				"amd.com/nic.firmware-version": "1.2.3",
 				"amd.com/nic.port-count":       "2",
 				"amd.com/nic.port0-speed":      "100G",
 				"amd.com/nic.port1-speed":      "25G",
-				"amd.com/nic.driver-version":   "2.1.0",
-				"amd.com/nic.driver-name":      "ionic",
 			},
 		},
 		{
@@ -99,16 +88,12 @@ func TestNicctlDiscoverer_Discover_FromYAML(t *testing.T) {
 				"amd.com/nic.count":                     "2",
 				"amd.com/nic.dss-w600.count":            "1",
 				"amd.com/nic.dss-w400.count":            "1",
-				"amd.com/nic.dss-w600.product-name":     "Test_NIC_1",
-				"amd.com/nic.dss-w400.product-name":     "Test_NIC_2",
 				"amd.com/nic.dss-w600.firmware-version": "1.2.3",
 				"amd.com/nic.dss-w400.firmware-version": "1.3.4",
 				"amd.com/nic.dss-w600.port-count":       "1",
 				"amd.com/nic.dss-w400.port-count":       "1",
 				"amd.com/nic.dss-w600.port-speed":       "100G",
 				"amd.com/nic.dss-w400.port-speed":       "25G",
-				"amd.com/nic.driver-version":            "2.1.0",
-				"amd.com/nic.driver-name":               "ionic",
 			},
 		},
 		{
@@ -118,16 +103,12 @@ func TestNicctlDiscoverer_Discover_FromYAML(t *testing.T) {
 				"amd.com/nic.count":                     "2",
 				"amd.com/nic.dss-w650.count":            "1",
 				"amd.com/nic.dss-w450.count":            "1",
-				"amd.com/nic.dss-w650.product-name":     "Test_NIC_1",
-				"amd.com/nic.dss-w450.product-name":     "Test_NIC_2",
 				"amd.com/nic.dss-w650.firmware-version": "1.2.3",
 				"amd.com/nic.dss-w450.firmware-version": "1.3.4",
 				"amd.com/nic.dss-w650.port-count":       "2",
 				"amd.com/nic.dss-w450.port-count":       "2",
 				"amd.com/nic.dss-w650.port-speed":       "100G",
 				"amd.com/nic.dss-w450.port-speed":       "25G",
-				"amd.com/nic.driver-version":            "2.1.0",
-				"amd.com/nic.driver-name":               "ionic",
 			},
 		},
 		{
@@ -137,8 +118,6 @@ func TestNicctlDiscoverer_Discover_FromYAML(t *testing.T) {
 				"amd.com/nic.count":                     "2",
 				"amd.com/nic.dss-w650.count":            "1",
 				"amd.com/nic.dss-w450.count":            "1",
-				"amd.com/nic.dss-w650.product-name":     "Test_NIC_1",
-				"amd.com/nic.dss-w450.product-name":     "Test_NIC_2",
 				"amd.com/nic.dss-w650.firmware-version": "1.2.3",
 				"amd.com/nic.dss-w450.firmware-version": "1.3.4",
 				"amd.com/nic.dss-w650.port-count":       "2",
@@ -146,15 +125,13 @@ func TestNicctlDiscoverer_Discover_FromYAML(t *testing.T) {
 				"amd.com/nic.dss-w650.port0-speed":      "100G",
 				"amd.com/nic.dss-w650.port1-speed":      "400G",
 				"amd.com/nic.dss-w450.port-speed":       "25G",
-				"amd.com/nic.driver-version":            "2.1.0",
-				"amd.com/nic.driver-name":               "ionic",
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			yamlFile := filepath.Join("testdata", tt.nicMockFile)
+			yamlFile := filepath.Join("testdata", "nicctldiscoverer", tt.nicMockFile)
 			mockClient, err := nicctl.NewMockNicctlClientFromYAML(yamlFile)
 			if err != nil {
 				t.Fatalf("Failed to create mock client from YAML: %v", err)

@@ -19,6 +19,7 @@ package nicctl
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -88,16 +89,36 @@ func NewNicctlCommandClient(binaryPath string) (*NicctlCommandClient, error) {
 // validateBinary checks if the nicctl binary exists and is executable
 func validateBinary(binaryPath string) error {
 	// Check if file exists
-	if _, err := exec.LookPath(binaryPath); err != nil {
-		return fmt.Errorf("nicctl binary not found at %s: %w", binaryPath, err)
+	fileInfo, err := os.Stat(binaryPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("nicctl binary not found at %s", binaryPath)
+		}
+		return fmt.Errorf("failed to check nicctl binary at %s: %w", binaryPath, err)
 	}
 
-	// Show output of nicctl --help to ensure it is executable
-	cmd := exec.Command(binaryPath, "--help")
+	// Check if it is an executable
+	mode := fileInfo.Mode()
+	if !mode.IsRegular() {
+		return fmt.Errorf("nicctl binary at %s is not a regular file", binaryPath)
+	}
+	if mode.Perm()&0111 == 0 {
+		return fmt.Errorf("nicctl binary at %s is not executable", binaryPath)
+	}
+
+	// Check if nicctl show card -j gives an output, to make sure it is the right binary
+	cmd := exec.Command(binaryPath, "show", "card", "-j")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("nicctl binary at %s is not executable: %w\nOutput: %s", binaryPath, err, output)
+		return fmt.Errorf("nicctl found but seems non-functional: Failed to execute nicctl binary at %s: %w\nOutput: %s", binaryPath, err, output)
 	}
+
+	// Try to parse the output as JSON to ensure it's valid
+	var testResponse NICResponse
+	if err := json.Unmarshal(output, &testResponse); err != nil {
+		return fmt.Errorf("nicctl found but seems non-functional: nicctl binary at %s does not produce valid JSON output: %w\nOutput: %s", binaryPath, err, output)
+	}
+
 	return nil
 }
 

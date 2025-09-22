@@ -101,7 +101,7 @@ func (nl *NodeLabeller) runOnce(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("error discovering from discoverer %d: %w", i+1, err)
 		}
-		log.Printf("Discoverer %d found %d labels", i+1, len(labels))
+		log.Printf("Discoverer %s[%d] found %d labels", disc.GetName(), i+1, len(labels))
 		allLabels = append(allLabels, labels...)
 	}
 

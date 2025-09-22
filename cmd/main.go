@@ -22,6 +22,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/ROCm/k8s-network-node-labeller/internal/cleaner"
@@ -29,6 +30,7 @@ import (
 	"github.com/ROCm/k8s-network-node-labeller/internal/nicctl"
 	"github.com/ROCm/k8s-network-node-labeller/internal/nodelabeller"
 	"github.com/ROCm/k8s-network-node-labeller/internal/publisher"
+	"github.com/ROCm/k8s-network-node-labeller/internal/sysfs"
 	"github.com/ROCm/k8s-network-node-labeller/internal/utils"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -48,10 +50,22 @@ func createNodeLabeller() (*nodelabeller.NodeLabeller, error) {
 		return nil, fmt.Errorf("failed to create kubernetes client: %w", err)
 	}
 
-	// Create nicctl client
+	// Create nicctl client (this is optional since nicctl doesn't work in VM environments)
 	nicctlClient, err := createNicctlClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create nicctl client: %w", err)
+		if strings.Contains(err.Error(), "nicctl found but seems non-functional") {
+			// This is the case where binary is found but nicctl show card -j fails
+			return nil, fmt.Errorf("failed to create nicctl client: %w", err)
+		} else {
+			// Log the error but continue without nicctl
+			log.Printf("Warning: nicctl client could not be created, continuing without it: %v", err)
+		}
+	}
+
+	// Create sysfs client
+	sysfsClient, err := createSysfsClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create sysfs client: %w", err)
 	}
 
 	// Create cleaner with shared kubernetes client
@@ -66,15 +80,21 @@ func createNodeLabeller() (*nodelabeller.NodeLabeller, error) {
 		return nil, fmt.Errorf("failed to create kubernetes publisher: %w", err)
 	}
 
-	// Create discoverer with the nicctl client
-	nicctlDiscoverer := discoverer.NewNicctlDiscoverer(nicctlClient)
+	sysfsDiscoverer := discoverer.NewSysfsDiscoverer(sysfsClient)
 
 	discoverers := []discoverer.Discoverer{
-		nicctlDiscoverer,
+		sysfsDiscoverer,
 	}
+	if nicctlClient != nil {
+		// Create discoverer with the nicctl client
+		nicctlDiscoverer := discoverer.NewNicctlDiscoverer(nicctlClient)
+		discoverers = append(discoverers, nicctlDiscoverer)
+	}
+
 	publishers := []publisher.Publisher{
 		kubePublisher,
 	}
+
 	cleaners := []cleaner.Cleaner{
 		kubeCleaner,
 	}
@@ -124,6 +144,15 @@ func createNicctlClient() (nicctl.NicctlClient, error) {
 		return nil, fmt.Errorf("failed to create nicctl client: %w", err)
 	}
 	return nicctlClient, nil
+}
+
+// createSysfsClient creates a sysfs client
+func createSysfsClient() (*sysfs.SysfsClient, error) {
+	client, err := sysfs.NewSysfsClient(discoverer.DefaultSysfsBasePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create sysfs client: %w", err)
+	}
+	return client, nil
 }
 
 func main() {

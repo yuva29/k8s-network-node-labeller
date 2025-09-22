@@ -33,9 +33,11 @@ var (
 		`firmware-version`,
 		`.*\.firmware-version`, // For SKU specific firmware version labels
 
-		// Driver version labels
+		// Driver info labels
 		`driver-version`,
+		`.*\.driver-version`,
 		`driver-name`,
+		`.*\.driver-name`,
 
 		// Port count labels
 		`port-count`,

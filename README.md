@@ -21,7 +21,7 @@ The Labeller must be run on all nodes equipped with AMD AINICs. The simplest way
 ## Labels
 The Labeller currently creates node labels for the following AMD AINIC properties:
 
-* Count (-)
+* Count (-count)
 * Product Name (-product-name)
 * Port Count (-port-count)
 * Port Speed (-port-speed)
@@ -47,6 +47,8 @@ Example result:
     Annotations:        kubeadm.alpha.kubernetes.io/cri-socket: /var/run/dockershim.sock
                         node.alpha.kubernetes.io/ttl: 0
     ......
+
+**Note:** When running on VMs, the labeller has limited access to hardware information and will only publish the following labels: Product Name, Driver Version, and Driver Name. Other hardware-specific properties like port count, port speed, and firmware version may not be available in virtualized environments.
 
 #### Label Key Format for Homogeneous vs Heterogeneous Nodes
 
