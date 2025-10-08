@@ -19,6 +19,7 @@ package cleaner
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"regexp"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -101,6 +102,7 @@ func (kc *KubernetesCleaner) CleanByRegexps(ctx context.Context, regexps []strin
 		if err != nil {
 			return fmt.Errorf("failed to update node %s: %w", kc.nodeName, err)
 		}
+		slog.Debug("Cleaned stale labels from node", "nodeName", kc.nodeName, "removedLabelCount", len(labelsToRemove))
 
 		return nil
 	})

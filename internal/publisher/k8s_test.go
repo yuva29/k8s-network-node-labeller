@@ -17,8 +17,10 @@ limitations under the License.
 package publisher
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -89,6 +91,11 @@ func TestNewKubernetesPublisher(t *testing.T) {
 				}
 				if publisher.nodeName != tt.nodeName {
 					t.Errorf("expected node name '%s', got '%s'", tt.nodeName, publisher.nodeName)
+				}
+				// Verify that previousLabelsHash is initialized to hash of empty labels
+				expectedInitialHash := label.HashLabels([]label.Label{})
+				if publisher.previousLabelsHash != expectedInitialHash {
+					t.Errorf("expected previousLabelsHash to be initialized to '%s', got '%s'", expectedInitialHash, publisher.previousLabelsHash)
 				}
 			}
 		})
@@ -393,5 +400,249 @@ func TestKubernetesPublisher_PublishIntegration(t *testing.T) {
 		} else if actualValue != expectedValue {
 			t.Errorf("expected label '%s' to have value '%s', got '%s'", key, expectedValue, actualValue)
 		}
+	}
+}
+
+func TestKubernetesPublisher_logLabelsChanged(t *testing.T) {
+	// Test case structure
+	testCases := []struct {
+		name             string
+		nodeName         string
+		firstCallLabels  []label.Label
+		secondCallLabels []label.Label
+		expectHashChange bool
+		logExpectations  []struct {
+			call             int // 1 for first call, 2 for second call
+			shouldContain    []string
+			shouldNotContain []string
+		}
+	}{
+		{
+			name:     "initial call with labels then same labels",
+			nodeName: "test-node-1",
+			firstCallLabels: []label.Label{
+				{Key: "test.com/nic.driver", Value: "ionic"},
+				{Key: "test.com/nic.count", Value: "2"},
+			},
+			secondCallLabels: []label.Label{
+				{Key: "test.com/nic.driver", Value: "ionic"},
+				{Key: "test.com/nic.count", Value: "2"},
+			},
+			expectHashChange: false,
+			logExpectations: []struct {
+				call             int
+				shouldContain    []string
+				shouldNotContain []string
+			}{
+				{
+					call:          1,
+					shouldContain: []string{"Found new labels to Publish", "test-node-1"},
+				},
+				{
+					call:          2,
+					shouldContain: []string{"No new labels to Publish, Hash unchanged", "test-node-1"},
+				},
+			},
+		},
+		{
+			name:     "initial call then different labels",
+			nodeName: "test-node-2",
+			firstCallLabels: []label.Label{
+				{Key: "test.com/nic.driver", Value: "ionic"},
+				{Key: "test.com/nic.version", Value: "1.0"},
+			},
+			secondCallLabels: []label.Label{
+				{Key: "test.com/nic.driver", Value: "mlx5"},
+				{Key: "test.com/nic.version", Value: "2.0"},
+			},
+			expectHashChange: true,
+			logExpectations: []struct {
+				call             int
+				shouldContain    []string
+				shouldNotContain []string
+			}{
+				{
+					call:          1,
+					shouldContain: []string{"Found new labels to Publish", "test-node-2"},
+				},
+				{
+					call:          2,
+					shouldContain: []string{"Found new labels to Publish", "test-node-2"},
+				},
+			},
+		},
+		{
+			name:            "empty labels then non-empty labels",
+			nodeName:        "test-node-3",
+			firstCallLabels: []label.Label{},
+			secondCallLabels: []label.Label{
+				{Key: "test.com/nic.added", Value: "true"},
+			},
+			expectHashChange: true, // Hash changes between first and second call
+			logExpectations: []struct {
+				call             int
+				shouldContain    []string
+				shouldNotContain []string
+			}{
+				{
+					call:          1,
+					shouldContain: []string{"No new labels to Publish, Hash unchanged", "test-node-3"},
+				},
+				{
+					call:          2,
+					shouldContain: []string{"Found new labels to Publish", "test-node-3"},
+				},
+			},
+		},
+		{
+			name:             "nil labels then empty labels",
+			nodeName:         "test-node-4",
+			firstCallLabels:  nil,
+			secondCallLabels: []label.Label{},
+			expectHashChange: false, // Both nil and empty should produce same hash
+			logExpectations: []struct {
+				call             int
+				shouldContain    []string
+				shouldNotContain []string
+			}{
+				{
+					call:          1,
+					shouldContain: []string{"No new labels to Publish, Hash unchanged", "test-node-4"},
+				},
+				{
+					call:          2,
+					shouldContain: []string{"No new labels to Publish, Hash unchanged", "test-node-4"},
+				},
+			},
+		},
+		{
+			name:     "verify labels get printed when changed",
+			nodeName: "test-node-print",
+			firstCallLabels: []label.Label{
+				{Key: "test.com/driver", Value: "ionic"},
+				{Key: "test.com/version", Value: "1.5.0"},
+			},
+			secondCallLabels: []label.Label{
+				{Key: "test.com/driver", Value: "ionic"},
+				{Key: "test.com/version", Value: "1.5.0"},
+			},
+			expectHashChange: false,
+			logExpectations: []struct {
+				call             int
+				shouldContain    []string
+				shouldNotContain []string
+			}{
+				{
+					call: 1,
+					shouldContain: []string{
+						"Found new labels to Publish",
+						"test-node-print",
+
+						"key=test.com/driver",
+						"value=ionic",
+						"key=test.com/version",
+						"value=1.5.0",
+					},
+				},
+				{
+					call:             2,
+					shouldContain:    []string{"No new labels to Publish, Hash unchanged", "test-node-print"},
+					shouldNotContain: []string{"key=test.com/driver", "value=ionic"},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			clientset := fake.NewSimpleClientset()
+			publisher, err := NewKubernetesPublisher(clientset, tc.nodeName)
+			if err != nil {
+				t.Fatalf("failed to create publisher: %v", err)
+			}
+
+			// Verify initial state - previousLabelsHash should be hash of empty labels
+			expectedInitialHash := label.HashLabels([]label.Label{})
+			if publisher.previousLabelsHash != expectedInitialHash {
+				t.Fatalf("expected initial previousLabelsHash to be '%s', got '%s'", expectedInitialHash, publisher.previousLabelsHash)
+			}
+
+			// Capture log output (capture both Debug and Info levels)
+			var logBuf bytes.Buffer
+			logger := slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{
+				Level: slog.LevelDebug, // This captures Debug, Info, Warn, Error
+			}))
+			originalLogger := slog.Default()
+			slog.SetDefault(logger)
+			defer slog.SetDefault(originalLogger)
+
+			// First call
+			logBuf.Reset()
+			publisher.logLabelsChanged(tc.firstCallLabels)
+			firstCallLog := logBuf.String()
+			hashAfterFirst := publisher.previousLabelsHash
+
+			// Verify first call expectations
+			for _, expectation := range tc.logExpectations {
+				if expectation.call == 1 {
+					for _, shouldContain := range expectation.shouldContain {
+						if !strings.Contains(firstCallLog, shouldContain) {
+							t.Errorf("first call log should contain '%s', but got: %s", shouldContain, firstCallLog)
+						}
+					}
+					for _, shouldNotContain := range expectation.shouldNotContain {
+						if strings.Contains(firstCallLog, shouldNotContain) {
+							t.Errorf("first call log should not contain '%s', but got: %s", shouldNotContain, firstCallLog)
+						}
+					}
+				}
+			}
+
+			// Verify hash was set after first call
+			expectedFirstHash := label.HashLabels(tc.firstCallLabels)
+			if hashAfterFirst != expectedFirstHash {
+				t.Errorf("after first call, expected hash '%s', got '%s'", expectedFirstHash, hashAfterFirst)
+			}
+
+			// Second call
+			logBuf.Reset()
+			publisher.logLabelsChanged(tc.secondCallLabels)
+			secondCallLog := logBuf.String()
+			hashAfterSecond := publisher.previousLabelsHash
+
+			// Verify second call expectations
+			for _, expectation := range tc.logExpectations {
+				if expectation.call == 2 {
+					for _, shouldContain := range expectation.shouldContain {
+						if !strings.Contains(secondCallLog, shouldContain) {
+							t.Errorf("second call log should contain '%s', but got: %s", shouldContain, secondCallLog)
+						}
+					}
+					for _, shouldNotContain := range expectation.shouldNotContain {
+						if strings.Contains(secondCallLog, shouldNotContain) {
+							t.Errorf("second call log should not contain '%s', but got: %s", shouldNotContain, secondCallLog)
+						}
+					}
+				}
+			}
+
+			// Verify hash behavior
+			expectedSecondHash := label.HashLabels(tc.secondCallLabels)
+			if hashAfterSecond != expectedSecondHash {
+				t.Errorf("after second call, expected hash '%s', got '%s'", expectedSecondHash, hashAfterSecond)
+			}
+
+			// Verify hash change expectation
+			if tc.expectHashChange {
+				if hashAfterFirst == hashAfterSecond {
+					t.Errorf("expected hash to change between calls, but both were '%s'", hashAfterFirst)
+				}
+			} else {
+				if hashAfterFirst != hashAfterSecond {
+					t.Errorf("expected hash to remain same between calls, but got '%s' then '%s'", hashAfterFirst, hashAfterSecond)
+				}
+			}
+		})
 	}
 }

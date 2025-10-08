@@ -18,7 +18,7 @@ package sysfs
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,7 +79,7 @@ func getDriverInfoForPCIDevice(sysFSPath string) (string, string, error) {
 	versionData, err := os.ReadFile(versionPath)
 	if err != nil {
 		// Version file might not exist, log and return empty version
-		log.Printf("Warning: failed to read driver version from %s: %v", versionPath, err)
+		slog.Warn("failed to read driver version", "versionPath", versionPath, "error", err)
 		return driverName, "", nil
 	}
 

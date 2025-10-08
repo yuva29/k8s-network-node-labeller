@@ -18,7 +18,7 @@ package sysfs
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -225,7 +225,7 @@ func (c *SysfsClient) groupFuncsToNICs(funcs []PCIDevice) []NIC {
 	for _, group := range parentGroups {
 		nic, err := NewNICFromPCIFuncs(group, c.productInfoMap)
 		if err != nil {
-			log.Printf("Warning: failed to create NIC from PCI functions: %v", err)
+			slog.Warn("failed to create NIC from PCI functions", "error", err)
 			continue
 		}
 		nics = append(nics, nic)

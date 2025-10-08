@@ -17,8 +17,11 @@ limitations under the License.
 package label
 
 import (
+	"log/slog"
 	"regexp"
 	"strings"
+
+	"github.com/ROCm/k8s-network-node-labeller/internal/utils"
 )
 
 // NormalizeString normalizes a string by converting to be able to use it as a label key or value.
@@ -32,4 +35,38 @@ func NormalizeString(s string) string {
 	re := regexp.MustCompile(`[^a-z0-9-.]`)
 	s = re.ReplaceAllString(s, "")
 	return s
+}
+
+// HashLabels computes a hash of the given labels using chain hashing
+func HashLabels(labels []Label) string {
+	// Convert labels to strings
+	labelStrings := make([]string, len(labels))
+	for i, label := range labels {
+		labelStrings[i] = label.String()
+	}
+
+	// Use utils.HashArray for the actual hashing
+	return utils.HashArray(labelStrings)
+}
+
+// PrintLabels prints the given labels in a structured format at the specified log level
+func PrintLabels(labels []Label, level slog.Level) {
+	if len(labels) == 0 {
+		slog.Log(nil, level, "No labels to print")
+		return
+	}
+
+	for _, l := range labels {
+		slog.Log(nil, level, "Label", "key", l.Key, "value", l.Value)
+	}
+}
+
+// PrintLabelsInfo prints the given labels at Info log level
+func PrintLabelsInfo(labels []Label) {
+	PrintLabels(labels, slog.LevelInfo)
+}
+
+// PrintLabelsDebug prints the given labels at Debug log level
+func PrintLabelsDebug(labels []Label) {
+	PrintLabels(labels, slog.LevelDebug)
 }

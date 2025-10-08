@@ -19,7 +19,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"strings"
@@ -37,12 +37,47 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// initLogger initializes slog with the LOG_LEVEL environment variable
+func initLogger() {
+	logLevel := getLogLevelFromEnv()
+
+	opts := &slog.HandlerOptions{
+		Level: logLevel,
+	}
+
+	handler := slog.NewTextHandler(os.Stdout, opts)
+	logger := slog.New(handler)
+
+	// Set as default logger
+	slog.SetDefault(logger)
+}
+
+// getLogLevelFromEnv returns the log level from LOG_LEVEL environment variable
+// Defaults to INFO if not set or invalid
+func getLogLevelFromEnv() slog.Level {
+	logLevelStr := strings.ToUpper(strings.TrimSpace(os.Getenv("LOG_LEVEL")))
+
+	switch logLevelStr {
+	case "DEBUG":
+		return slog.LevelDebug
+	case "INFO":
+		return slog.LevelInfo
+	case "WARN", "WARNING":
+		return slog.LevelWarn
+	case "ERROR":
+		return slog.LevelError
+	default:
+		// Default to INFO
+		return slog.LevelInfo
+	}
+}
+
 func createNodeLabeller() (*nodelabeller.NodeLabeller, error) {
 	nodeName, err := utils.GetNodeNameFromEnv()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node name: %w", err)
 	}
-	log.Printf("Node name: %s", nodeName)
+	slog.Info("Node name", "nodeName", nodeName)
 
 	// Create shared Kubernetes client
 	clientset, err := createKubernetesClient()
@@ -58,7 +93,7 @@ func createNodeLabeller() (*nodelabeller.NodeLabeller, error) {
 			return nil, fmt.Errorf("failed to create nicctl client: %w", err)
 		} else {
 			// Log the error but continue without nicctl
-			log.Printf("Warning: nicctl client could not be created, continuing without it: %v", err)
+			slog.Warn("nicctl client could not be created, continuing without it", "error", err)
 		}
 	}
 
@@ -131,7 +166,7 @@ func createKubernetesClient() (kubernetes.Interface, error) {
 func createNicctlClient() (nicctl.NicctlClient, error) {
 	// If SIM_ENABLE environment variable is set, create a mock client
 	if _, present := os.LookupEnv("SIM_ENABLE"); present {
-		log.Println("SIM_ENABLE is set, using MockNicctlClient")
+		slog.Info("SIM_ENABLE is set, using MockNicctlClient")
 		mockClient := nicctl.NewMockNicctlClient()
 		mockClient.GetIonicDriverVersionFunc = func() (string, error) {
 			return "", nil
@@ -156,13 +191,17 @@ func createSysfsClient() (*sysfs.SysfsClient, error) {
 }
 
 func main() {
+	// Initialize logger with LOG_LEVEL environment variable support
+	initLogger()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Create and start NodeLabeller
 	labeller, err := createNodeLabeller()
 	if err != nil {
-		log.Fatalf("Failed to create NodeLabeller: %v", err)
+		slog.Error("Failed to create NodeLabeller", "error", err)
+		os.Exit(1)
 	}
 
 	// Set up signal handling for graceful shutdown
@@ -180,14 +219,14 @@ func main() {
 	// Wait for shutdown signal or error
 	select {
 	case sig := <-sigChan:
-		log.Printf("Received signal %v, shutting down gracefully...", sig)
+		slog.Info("Received signal, shutting down gracefully", "signal", sig)
 		cancel()
 		labeller.Stop()
 	case err := <-errChan:
-		log.Printf("NodeLabeller error: %v", err)
+		slog.Error("NodeLabeller error", "error", err)
 		cancel()
 		labeller.Stop()
 	}
 
-	log.Println("NodeLabeller shutdown complete")
+	slog.Info("NodeLabeller shutdown complete")
 }

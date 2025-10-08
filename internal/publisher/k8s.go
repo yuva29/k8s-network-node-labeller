@@ -19,6 +19,7 @@ package publisher
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -29,8 +30,9 @@ import (
 
 // KubernetesPublisher implements Publisher interface for writing labels to Kubernetes nodes
 type KubernetesPublisher struct {
-	clientset kubernetes.Interface
-	nodeName  string
+	clientset          kubernetes.Interface
+	nodeName           string
+	previousLabelsHash string
 }
 
 // NewKubernetesPublisher creates a new Kubernetes publisher with an existing clientset
@@ -43,9 +45,25 @@ func NewKubernetesPublisher(clientset kubernetes.Interface, nodeName string) (*K
 	}
 
 	return &KubernetesPublisher{
-		clientset: clientset,
-		nodeName:  nodeName,
+		clientset:          clientset,
+		nodeName:           nodeName,
+		previousLabelsHash: label.HashLabels([]label.Label{}),
 	}, nil
+}
+
+func (kp *KubernetesPublisher) logLabelsChanged(labels []label.Label) {
+	// Compute hash of current labels
+	currentHash := label.HashLabels(labels)
+
+	// Check if hash has changed
+	if currentHash != kp.previousLabelsHash {
+		slog.Debug("Found new labels to Publish", "node", kp.nodeName, "previousHash", kp.previousLabelsHash, "currentHash", currentHash)
+		slog.Info("Publishing Labels:", "node", kp.nodeName)
+		label.PrintLabelsInfo(labels)
+		kp.previousLabelsHash = currentHash
+	} else {
+		slog.Debug("No new labels to Publish, Hash unchanged", "node", kp.nodeName, "previousHash", kp.previousLabelsHash, "currentHash", currentHash)
+	}
 }
 
 // Publish applies labels to the Kubernetes node
@@ -53,6 +71,9 @@ func (kp *KubernetesPublisher) Publish(ctx context.Context, labels []label.Label
 	if len(labels) == 0 {
 		return nil
 	}
+
+	// Log labels if they have changed
+	kp.logLabelsChanged(labels)
 
 	err := retry.OnError(retry.DefaultRetry, func(err error) bool {
 		return true
