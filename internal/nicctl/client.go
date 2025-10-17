@@ -21,6 +21,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+
+	"github.com/prometheus/procfs"
+)
+
+const (
+	hypervisorCPUFlag = "hypervisor"
 )
 
 // NIC represents a network interface card
@@ -77,6 +83,9 @@ type NicctlCommandClient struct {
 
 // NewNicctlCommandClient creates a new NicctlCommandClient
 func NewNicctlCommandClient(binaryPath string) (*NicctlCommandClient, error) {
+	if !isBareMetal() {
+		return nil, fmt.Errorf("nicctl client not valid in VM environment")
+	}
 	if err := validateBinary(binaryPath); err != nil {
 		return nil, fmt.Errorf("Invalid nicctl binary: %s", err)
 	}
@@ -84,6 +93,25 @@ func NewNicctlCommandClient(binaryPath string) (*NicctlCommandClient, error) {
 	return &NicctlCommandClient{
 		binaryPath: binaryPath,
 	}, nil
+}
+
+func isBareMetal() bool {
+	fs, err := procfs.NewDefaultFS()
+	if err != nil {
+		return false
+	}
+	cpus, err := fs.CPUInfo()
+	if err != nil {
+		return false
+	}
+	for _, cpu := range cpus {
+		for _, flag := range cpu.Flags {
+			if flag == hypervisorCPUFlag {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // validateBinary checks if the nicctl binary exists and is executable
