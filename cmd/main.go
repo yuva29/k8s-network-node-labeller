@@ -85,18 +85,6 @@ func createNodeLabeller() (*nodelabeller.NodeLabeller, error) {
 		return nil, fmt.Errorf("failed to create kubernetes client: %w", err)
 	}
 
-	// Create nicctl client (this is optional since nicctl doesn't work in VM environments)
-	nicctlClient, err := createNicctlClient()
-	if err != nil {
-		if strings.Contains(err.Error(), "nicctl found but seems non-functional") {
-			// This is the case where binary is found but nicctl show card -j fails
-			return nil, fmt.Errorf("failed to create nicctl client: %w", err)
-		} else {
-			// Log the error but continue without nicctl
-			slog.Warn("nicctl client could not be created, continuing without it", "error", err)
-		}
-	}
-
 	// Create sysfs client
 	sysfsClient, err := createSysfsClient()
 	if err != nil {
@@ -120,8 +108,12 @@ func createNodeLabeller() (*nodelabeller.NodeLabeller, error) {
 	discoverers := []discoverer.Discoverer{
 		sysfsDiscoverer,
 	}
+	// create nicctl client and discoverer based on environment
+	nicctlClient, err := createNicctlClient()
+	if err != nil {
+		return nil, fmt.Errorf("error creating nicctl client: %w", err)
+	}
 	if nicctlClient != nil {
-		// Create discoverer with the nicctl client
 		nicctlDiscoverer := discoverer.NewNicctlDiscoverer(nicctlClient)
 		discoverers = append(discoverers, nicctlDiscoverer)
 	}
@@ -174,11 +166,18 @@ func createNicctlClient() (nicctl.NicctlClient, error) {
 		return mockClient, nil
 	}
 
-	nicctlClient, err := nicctl.NewNicctlCommandClient(discoverer.NicctlBinaryPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create nicctl client: %w", err)
+	// Check if it is a bare metal node
+	if utils.IsNodeBareMetal() {
+		nicctlClient, err := nicctl.NewNicctlCommandClient(discoverer.NicctlBinaryPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create nicctl client: %w", err)
+		}
+		return nicctlClient, nil
+	} else {
+		slog.Info("Node is not bare metal, skipping nicctl discoverer creation")
 	}
-	return nicctlClient, nil
+
+	return nil, nil
 }
 
 // createSysfsClient creates a sysfs client

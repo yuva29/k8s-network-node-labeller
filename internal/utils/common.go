@@ -19,7 +19,12 @@ package utils
 import (
 	"encoding/binary"
 
+	"github.com/prometheus/procfs"
 	"github.com/spaolacci/murmur3"
+)
+
+const (
+	hypervisorCPUFlag = "hypervisor"
 )
 
 func HashArray(input []string) string {
@@ -44,4 +49,23 @@ func HashArray(input []string) string {
 	}
 
 	return string(currentHash)
+}
+
+func IsNodeBareMetal() bool {
+	fs, err := procfs.NewDefaultFS()
+	if err != nil {
+		return false
+	}
+	cpus, err := fs.CPUInfo()
+	if err != nil {
+		return false
+	}
+	for _, cpu := range cpus {
+		for _, flag := range cpu.Flags {
+			if flag == hypervisorCPUFlag {
+				return false
+			}
+		}
+	}
+	return true
 }
