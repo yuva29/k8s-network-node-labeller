@@ -16,7 +16,7 @@ fi
 
 tag_prefix="${RELEASE%-*}"
 
-if [ "$tag_prefix" == "network-node-labeller-0.0.1" ]; then
+if [ "$tag_prefix" == "main" ]; then
   tag="latest"
 else
   tag="$tag_prefix"
@@ -63,10 +63,21 @@ docker_push () {
     fi
 }
 
+helm_push () {
+    if [ -z $DOCKERHUB_TOKEN ]
+    then
+      echo "DOCKERHUB_TOKEN is not set"
+    else
+      helm registry login docker.io --username=shreyajmeraamd --password-stdin <<< $DOCKERHUB_TOKEN
+      helm push /k8s-network-node-labeller/build/helm/network-nl-chart-v0.0.1.tgz oci://docker.io/amdpsdo
+    fi
+}
+
 setup () {
     setup_dir
     copy_artifacts
     docker_push
+    helm_push
 }
 
 upload () {

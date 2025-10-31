@@ -13,6 +13,20 @@ builds:
     owners: ["email:Shiv.Tyagi@amd.com"]
     artifacts:
         - /k8s-network-node-labeller/build/docker/k8s-network-node-labeller-latest.tar.gz
+  
+  build-network-node-labeller-helm-chart:
+    commands: ["sh", "-c", "cd /usr/src/github.com/ROCm/k8s-network-node-labeller && \
+                export RELEASE=${RELEASE:-v0.0.1} && \
+                tag_prefix=${RELEASE%-*} && \
+                if [ \"$tag_prefix\" = \"main\" ]; then \
+                  HELM_CHART_VERSION=v0.0.1-$RELEASE; \
+                else \
+                  HELM_CHART_VERSION=$RELEASE; \
+                fi && \
+                IMAGE_TAG=$RELEASE HELM_CHART_VERSION=$HELM_CHART_VERSION HELM_CHART_APP_VERSION=$RELEASE make helm"]
+    owners: ["email:Shiv.Tyagi@amd.com"]
+    artifacts:
+        - /k8s-network-node-labeller/helm-charts-k8s/k8s-network-node-labeller-helm-k8s-v0.0.1.tgz
 
 targets:
   unit-tests:

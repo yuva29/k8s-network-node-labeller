@@ -10,6 +10,7 @@ targets:
     build-dependencies:
       - build-network-node-labeller
       - build-network-node-labeller-docker
+      - build-network-node-labeller-helm-chart
 
 image:
   bind_dir: /go/src/github.com/ROCm/k8s-network-node-labeller
