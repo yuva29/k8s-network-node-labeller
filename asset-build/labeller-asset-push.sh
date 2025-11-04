@@ -35,6 +35,9 @@ copy_artifacts () {
     cp /k8s-network-node-labeller/build/network-node-labeller $BUNDLE_DIR/k8s-network-node-labeller-$RELEASE.gobin
     # copy docker image
     cp /k8s-network-node-labeller/build/docker/k8s-network-node-labeller-latest.tar.gz $BUNDLE_DIR/k8s-network-node-labeller-$RELEASE.tar.gz
+    # copy k8s helm packages
+    cp /k8s-network-node-labeller/helm-charts-k8s/internal-k8s-network-node-labeller-helm-k8s-v0.0.1.tgz $BUNDLE_DIR/internal-k8s-network-node-labeller-helm-k8s-v0.0.1-$RELEASE.tgz
+    cp /k8s-network-node-labeller/helm-charts-k8s/amdpsdo-k8s-network-node-labeller-helm-k8s-v0.0.1.tgz $BUNDLE_DIR/amdpsdo-k8s-network-node-labeller-helm-k8s-v0.0.1-$RELEASE.tgz
     if [ "$?" -eq "0" ]; then
       echo "Network-NL image copy success"
     else
@@ -69,7 +72,7 @@ helm_push () {
       echo "DOCKERHUB_TOKEN is not set"
     else
       helm registry login docker.io --username=shreyajmeraamd --password-stdin <<< $DOCKERHUB_TOKEN
-      helm push /k8s-network-node-labeller/build/helm/network-nl-chart-v0.0.1.tgz oci://docker.io/amdpsdo
+      helm push /k8s-network-node-labeller/helm-charts-k8s/amdpsdo-k8s-network-node-labeller-helm-k8s-v0.0.1.tgz oci://docker.io/amdpsdo
     fi
 }
 

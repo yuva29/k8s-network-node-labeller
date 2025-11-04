@@ -1,5 +1,5 @@
 apiVersion: v2
-name: network-nl-chart
+name: network-node-labeller-charts
 description: A Helm chart for AMD AINIC Node Labeller
 
 type: application
