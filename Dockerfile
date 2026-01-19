@@ -22,8 +22,8 @@ WORKDIR /go/src/github.com/ROCm/k8s-network-node-labeller
 RUN make build
 
 FROM ${BASE_IMAGE} AS nicctlbuilder
-ARG AINIC_VER=1.117.5-a-56
-RUN echo "${AINIC_VER}" > /etc/dnf/vars/amdainicver
+ARG AINIC_VERSION=1.117.5-a-56
+RUN echo "${AINIC_VERSION}" > /etc/dnf/vars/amdainicver
 ENV DIST=el9
 RUN curl -o /etc/yum.repos.d/amdainic.repo \
     https://repo.radeon.com/amdainic/pensando/${DIST}/amdainic-${DIST}.repo
@@ -44,7 +44,8 @@ LABEL \
     org.opencontainers.image.source="https://github.com/ROCm/k8s-network-node-labeller" \
     org.opencontainers.image.authors="Shiv Tyagi <Shiv.Tyagi@amd.com>" \
     org.opencontainers.image.vendor="Advanced Micro Devices, Inc." \
-    org.opencontainers.image.licenses="Apache-2.0"
+    org.opencontainers.image.licenses="Apache-2.0" \
+    ainic_version=${AINIC_VERSION}
 
 COPY --from=nicctlbuilder /export/bin/nicctl /usr/sbin/nicctl
 COPY --from=nicctlbuilder /export/lib64/libpci* /lib64/
