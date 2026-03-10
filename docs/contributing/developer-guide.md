@@ -64,6 +64,8 @@ make docker-build
 make test
 ```
 
+> `make docker-build` builds the container image using the [`Dockerfile`](../../Dockerfile) at the root of the repository.
+
 ### Development Environment
 
 ```bash
