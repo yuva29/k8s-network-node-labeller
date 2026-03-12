@@ -37,10 +37,15 @@ spec:
         - sh
         - -c
         - |
+          if grep -qi hypervisor /proc/cpuinfo; then
+            echo "VM detected, skipping driver checks";
+            exit 0;
+          fi
           while [ ! -d /sys/class/infiniband ] || \
                 [ ! -d /sys/class/infiniband_verbs ] || \
-                [ ! -d /sys/module/ionic/drivers ]; do
-            echo "amd ionic driver is not loaded";
+                [ ! -d /sys/module/ionic/drivers ] || \
+                ([ ! -d /sys/module/tawk_ipc/drivers ] && [ ! -d /sys/module/pds_core/drivers ]); do
+            echo "waiting for drivers";
             sleep 2;
           done
         image: busybox:1.36
