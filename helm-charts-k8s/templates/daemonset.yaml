@@ -38,15 +38,27 @@ spec:
         - -c
         - |
           if grep -qi hypervisor /proc/cpuinfo; then
-            echo "VM detected, skipping driver checks";
-            exit 0;
+            IS_VM=true;
+            echo "Running on VM"
+          else
+            IS_VM=false;
+            echo "Running on bare metal"
           fi
-          while [ ! -d /sys/class/infiniband ] || \
-                [ ! -d /sys/class/infiniband_verbs ] || \
-                [ ! -d /sys/module/ionic/drivers ] || \
-                ([ ! -d /sys/module/tawk_ipc/drivers ] && [ ! -d /sys/module/pds_core/drivers ]); do
-            echo "waiting for drivers";
-            sleep 2;
+
+          drivers_not_ready() {
+            if [ "$IS_VM" = "true" ]; then
+              [ ! -d /sys/module/ionic/drivers ]
+            else
+              [ ! -d /sys/class/infiniband ] || \
+              [ ! -d /sys/class/infiniband_verbs ] || \
+              [ ! -d /sys/module/ionic/drivers ] || \
+              ([ ! -d /sys/module/tawk_ipc/drivers ] && [ ! -d /sys/module/pds_core/drivers ])
+            fi
+          }
+
+          while drivers_not_ready; do
+            echo "waiting for drivers"
+            sleep 2
           done
         image: busybox:1.36
         imagePullPolicy: IfNotPresent
