@@ -47,6 +47,8 @@ spec:
 
           drivers_not_ready() {
             if [ "$IS_VM" = "true" ]; then
+              [ ! -d /sys/class/infiniband ] || \
+              [ ! -d /sys/class/infiniband_verbs ] || \
               [ ! -d /sys/module/ionic/drivers ]
             else
               [ ! -d /sys/class/infiniband ] || \
