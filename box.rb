@@ -1,4 +1,4 @@
-from "registry.test.pensando.io:5000/k8s-network-node-labeller-build:v1.0"
+from "registry.test.pensando.io:5000/k8s-network-node-labeller-build:v1.1"
 
 user = getenv("USER")
 group = getenv("GROUP_NAME")
