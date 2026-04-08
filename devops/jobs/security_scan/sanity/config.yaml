@@ -1,0 +1,7 @@
+# Security scan configuration
+tool: trivy
+scan_type: artifact
+artifacts:
+  - k8s-network-node-labeller-<RELEASE_TAG>.gobin
+  - k8s-network-node-labeller-<RELEASE_TAG>.tar.gz
+skip_jira_integration: false

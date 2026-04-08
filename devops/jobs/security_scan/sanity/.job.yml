@@ -1,0 +1,23 @@
+---
+version: 2.0
+image:
+  bind_dir: "/k8s-network-node-labeller"
+  work_dir: "/k8s-network-node-labeller/devops/jobs/security_scan/sanity"
+targets:
+  security_scan_sanity:
+    commands: ["sh", "../trigger.sh", "k8s-network-node-labeller"]
+    owners: ["email:karan.nath@amd.com"]
+    area:
+    sub-area:
+    build-dependencies:
+      - build-network-node-labeller
+      - build-network-node-labeller-docker
+      - build-network-node-labeller-helm-chart
+    feature:
+    asset-dependencies:
+      tags: []
+logfiles:
+submodules: {}
+
+
+
